@@ -17,7 +17,7 @@ def create_session():
     response = requests.post("https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/v1.0",
                             headers={
                                 "X-RapidAPI-Host": "skyscanner-skyscanner-flight-search-v1.p.rapidapi.com",
-                                "X-RapidAPI-Key": "ea607b75f4msh7fad7ab7fad19d8p10d9c5jsn9db67cde0a57",
+                                "X-RapidAPI-Key": YOURAPIKEY,
                                 "Content-Type": "application/x-www-form-urlencoded"
                             },
                             data={
