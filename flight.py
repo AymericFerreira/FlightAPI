@@ -14,27 +14,27 @@ def create_session():
     cabinClass = 'economy'
     adults = 1
 
-    response = requests.post("https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/v1.0",
-                            headers={
-                                "X-RapidAPI-Host": "skyscanner-skyscanner-flight-search-v1.p.rapidapi.com",
-                                "X-RapidAPI-Key": YOURAPIKEY,
-                                "Content-Type": "application/x-www-form-urlencoded"
-                            },
-                            data={
-                                "inboundDate": returnDate,
-                                "cabinClass": cabinClass,
-                                "children": 0,
-                                "infants": 0,
-                                "country": country,
-                                "currency": currency,
-                                "locale": locale,
-                                "originPlace": originPlace,
-                                "destinationPlace": destinationPlace,
-                                "outboundDate": departureDate,
-                                "adults": adults
-                            }
-                            )
-    return response
+    return requests.post(
+        "https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/v1.0",
+        headers={
+            "X-RapidAPI-Host": "skyscanner-skyscanner-flight-search-v1.p.rapidapi.com",
+            "X-RapidAPI-Key": YOURAPIKEY,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        data={
+            "inboundDate": returnDate,
+            "cabinClass": cabinClass,
+            "children": 0,
+            "infants": 0,
+            "country": country,
+            "currency": currency,
+            "locale": locale,
+            "originPlace": originPlace,
+            "destinationPlace": destinationPlace,
+            "outboundDate": departureDate,
+            "adults": adults,
+        },
+    )
 
 response = create_session()
 if response.status_code != 201:
@@ -42,23 +42,19 @@ if response.status_code != 201:
     sys.exit()
 else:
     print(f"Session created with success")
-    pass
-
 # print(response.headers["Location"])
 key = response.headers["Location"].split('/')[-1]
 # print(key)
 
 def get_session(key):
     request_string = f'https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/uk2/v1.0/{key}?sortType=price&sortOrder=asc&pageIndex=0&pageSize=10'
-    response = requests.get(
+    return requests.get(
         request_string,
         headers={
             "X-RapidAPI-Host": "skyscanner-skyscanner-flight-search-v1.p.rapidapi.com",
-            "X-RapidAPI-Key": "ea607b75f4msh7fad7ab7fad19d8p10d9c5jsn9db67cde0a57"
-        }
-        )
-
-    return response
+            "X-RapidAPI-Key": "ea607b75f4msh7fad7ab7fad19d8p10d9c5jsn9db67cde0a57",
+        },
+    )
 
 final_response = get_session(key)
 
@@ -70,8 +66,7 @@ def compute_results(response):
     json_content = json.dumps(content)
 
     text_dic = ast.literal_eval(json_content)
-    result_dic = json.loads(text_dic)
-    return result_dic
+    return json.loads(text_dic)
     
 result_dic = compute_results(final_response)
 
@@ -140,74 +135,72 @@ class Places:
 #              price, company, transfert, url)
         
 def generate_itineraries(result_dic):
-    flightList = []
-    for itinerarie_index in range(len(result_dic["Itineraries"])):
-        flightList.append(flightInformation(
-                           result_dic["Query"]["OriginPlace"], 
-                           result_dic["Query"]["DestinationPlace"], 
-                           result_dic["Query"]["OutboundDate"], 
-                           result_dic["Query"]["InboundDate"],
-                           result_dic["Query"]["CabinClass"], 
-                           result_dic["Query"]["Adults"]+ result_dic["Query"]["Children"] + result_dic["Query"]["Infants"],
-                           result_dic["Query"]["Currency"],
-                           result_dic["Itineraries"][itinerarie_index]["PricingOptions"][0]["Price"],
-                           'random-company', 
-                           'random_number_of_transfert',
-                           result_dic["Itineraries"][itinerarie_index]["PricingOptions"][0]["DeeplinkUrl"], 
-                           'random_access_date', 
-                           'random_acces_hour'))
-    return flightList
+    return [
+        flightInformation(
+            result_dic["Query"]["OriginPlace"],
+            result_dic["Query"]["DestinationPlace"],
+            result_dic["Query"]["OutboundDate"],
+            result_dic["Query"]["InboundDate"],
+            result_dic["Query"]["CabinClass"],
+            result_dic["Query"]["Adults"]
+            + result_dic["Query"]["Children"]
+            + result_dic["Query"]["Infants"],
+            result_dic["Query"]["Currency"],
+            item["PricingOptions"][0]["Price"],
+            'random-company',
+            'random_number_of_transfert',
+            item["PricingOptions"][0]["DeeplinkUrl"],
+            'random_access_date',
+            'random_acces_hour',
+        )
+        for item in result_dic["Itineraries"]
+    ]
     
 def generate_segment(result_dic):
-    segmentList = []
-    for segment_index in range(len(result_dic["Segments"])):
-            segmentList.append(Segment(
-                result_dic["Segments"][segment_index]["Id"],
-                result_dic["Segments"][segment_index]["OriginStation"],
-                result_dic["Segments"][segment_index]["DestinationStation"],
-                result_dic["Segments"][segment_index]["DepartureDateTime"],
-                result_dic["Segments"][segment_index]["ArrivalDateTime"],
-                result_dic["Segments"][segment_index]["Carrier"],
-                result_dic["Segments"][segment_index]["Duration"]))
-    return segmentList
+    return [
+        Segment(
+            item["Id"],
+            item["OriginStation"],
+            item["DestinationStation"],
+            item["DepartureDateTime"],
+            item["ArrivalDateTime"],
+            item["Carrier"],
+            item["Duration"],
+        )
+        for item in result_dic["Segments"]
+    ]
     
 def generate_legs(result_dic):
-    legsList = []
-    for legs_index in range(len(result_dic["Legs"])):
-        legsList.append(Legs(
-            result_dic["Legs"][legs_index]["Id"],
-            result_dic["Legs"][legs_index]["SegmentIds"],
-            result_dic["Legs"][legs_index]["OriginStation"],
-            result_dic["Legs"][legs_index]["DestinationStation"],
-            result_dic["Legs"][legs_index]["Departure"],
-            result_dic["Legs"][legs_index]["Arrival"],
-            result_dic["Legs"][legs_index]["Duration"],
-            result_dic["Legs"][legs_index]["Stops"],
-            result_dic["Legs"][legs_index]["Carriers"]))
-    return legsList
+    return [
+        Legs(
+            item["Id"],
+            item["SegmentIds"],
+            item["OriginStation"],
+            item["DestinationStation"],
+            item["Departure"],
+            item["Arrival"],
+            item["Duration"],
+            item["Stops"],
+            item["Carriers"],
+        )
+        for item in result_dic["Legs"]
+    ]
     
 def generate_agent(result_dic):
-    agentList = []
-    for agent_index in range(len(result_dic["Agents"])):
-        agentList.append(Agent(
-            result_dic["Agents"][agent_index]["Id"],
-            result_dic["Agents"][agent_index]["Name"]))
-    return agentList
+    return [Agent(item["Id"], item["Name"]) for item in result_dic["Agents"]]
     
 def generate_places(result_dic):
     placesList = []
-    for place_index in range(len(result_dic["Places"])):
-        if(len(result_dic["Places"][place_index])==4):
-            placesList.append(Places(
-                result_dic["Places"][place_index]["Id"],
-                result_dic["Places"][place_index]["Code"],
-                result_dic["Places"][place_index]["Name"]))
+    for item in result_dic["Places"]:
+        if len(item) == 4:
+            placesList.append(Places(item["Id"], item["Code"], item["Name"]))
         else:
-            placesList.append(Places(
-                result_dic["Places"][place_index]["Id"],
-                result_dic["Places"][place_index]["Code"],
-                result_dic["Places"][place_index]["Name"],
-                result_dic["Places"][place_index]["ParentId"]))
+            placesList.append(
+                Places(
+                    item["Id"], item["Code"], item["Name"], item["ParentId"]
+                )
+            )
+
     return placesList
     
     
